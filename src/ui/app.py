@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import time
 import tkinter as tk
+from typing import Optional
 
 import customtkinter as ctk
 
+from audio.beeper import build_morse_wave, play_wave, sanitize_morse_symbols, stop_playback
 from core import translate
 from core.tree import MORSE_TABLE
 from ui.visualizer import MorseTreeVisualizer
@@ -36,6 +38,10 @@ class MorseApp(ctk.CTk):
 		self._build_placeholder_tab(self.telegraph_tab, "Telegraph tools coming soon.")
 		self._build_placeholder_tab(self.audio_tab, "Audio tools coming soon.")
 		self._build_menus()
+		self._audio_playing = False
+		self._active_play_button: Optional[ctk.CTkButton] = None
+		self._playback_after_id: Optional[str] = None
+		self._sync_play_buttons()
 
 	def _build_encoder_tab(self) -> None:
 		self.encoder_tab.grid_columnconfigure(0, weight=1)
@@ -76,9 +82,17 @@ class MorseApp(ctk.CTk):
 			row=2, column=0, sticky="w", padx=10, pady=(0, 10)
 		)
 
-		ctk.CTkLabel(left_frame, text="Morse Output").grid(
-			row=3, column=0, sticky="w", padx=10, pady=(10, 4)
+		output_header = ctk.CTkFrame(left_frame, fg_color="transparent")
+		output_header.grid(row=3, column=0, sticky="ew", padx=10, pady=(10, 4))
+		output_header.grid_columnconfigure(0, weight=1)
+		ctk.CTkLabel(output_header, text="Morse Output").grid(row=0, column=0, sticky="w")
+		self.encoder_play_btn = ctk.CTkButton(
+			output_header,
+			text="Play",
+			width=80,
+			command=self._on_encoder_play,
 		)
+		self.encoder_play_btn.grid(row=0, column=1, sticky="e")
 		self.encoder_output = ctk.CTkTextbox(left_frame, height=120)
 		self.encoder_output.grid(row=4, column=0, sticky="nsew", padx=10, pady=(0, 10))
 		self._set_text(self.encoder_output, "")
@@ -122,9 +136,17 @@ class MorseApp(ctk.CTk):
 		self.decoder_pane.add(left_frame, minsize=420)
 		self.decoder_pane.add(self.decoder_side, minsize=280)
 
-		ctk.CTkLabel(left_frame, text="Morse Input").grid(
-			row=0, column=0, sticky="w", padx=10, pady=(10, 4)
+		input_header = ctk.CTkFrame(left_frame, fg_color="transparent")
+		input_header.grid(row=0, column=0, sticky="ew", padx=10, pady=(10, 4))
+		input_header.grid_columnconfigure(0, weight=1)
+		ctk.CTkLabel(input_header, text="Morse Input").grid(row=0, column=0, sticky="w")
+		self.decoder_play_btn = ctk.CTkButton(
+			input_header,
+			text="Play",
+			width=80,
+			command=self._on_decoder_play,
 		)
+		self.decoder_play_btn.grid(row=0, column=1, sticky="e")
 		self.decoder_input = ctk.CTkTextbox(left_frame, height=120)
 		self.decoder_input.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
 
@@ -158,9 +180,11 @@ class MorseApp(ctk.CTk):
 		file_menu = tk.Menu(self.menu_bar, tearoff=0)
 		self.view_menu = tk.Menu(self.menu_bar, tearoff=0)
 		self.animation_menu = tk.Menu(self.menu_bar, tearoff=0)
+		self.sound_menu = tk.Menu(self.menu_bar, tearoff=0)
 		self.menu_bar.add_cascade(label="File", menu=file_menu)
 		self.menu_bar.add_cascade(label="View", menu=self.view_menu)
 		self.menu_bar.add_cascade(label="Animation", menu=self.animation_menu)
+		self.menu_bar.add_cascade(label="Sound", menu=self.sound_menu)
 		self.config(menu=self.menu_bar)
 
 		file_menu.add_command(label="Exit", command=self.destroy)
@@ -170,6 +194,8 @@ class MorseApp(ctk.CTk):
 		self.decoder_visual_var = tk.BooleanVar(value=False)
 		self.decoder_guide_var = tk.BooleanVar(value=False)
 		self.animation_speed_var = tk.StringVar(value="normal")
+		self.sound_enabled_var = tk.BooleanVar(value=True)
+		self.sound_volume_var = tk.IntVar(value=75)
 
 		self.view_menu.add_checkbutton(
 			label="Encoder: Visualizer",
@@ -215,18 +241,108 @@ class MorseApp(ctk.CTk):
 			variable=self.animation_speed_var,
 		)
 
-	def _resolve_animation_delay(self, elapsed_seconds: float, step_count: int) -> int:
+		self.sound_menu.add_checkbutton(
+			label="Enable sound",
+			variable=self.sound_enabled_var,
+			command=self._on_sound_toggle,
+		)
+		self.sound_menu.add_separator()
+		self.sound_menu.add_radiobutton(
+			label="Volume 25%",
+			value=25,
+			variable=self.sound_volume_var,
+		)
+		self.sound_menu.add_radiobutton(
+			label="Volume 50%",
+			value=50,
+			variable=self.sound_volume_var,
+		)
+		self.sound_menu.add_radiobutton(
+			label="Volume 75%",
+			value=75,
+			variable=self.sound_volume_var,
+		)
+		self.sound_menu.add_radiobutton(
+			label="Volume 100%",
+			value=100,
+			variable=self.sound_volume_var,
+		)
+
+	def _resolve_unit_seconds(self, elapsed_seconds: float, morse: str) -> float:
 		mode = self.animation_speed_var.get()
 		speed_map = {
-			"slow": 600,
-			"normal": 350,
-			"fast": 150,
+			"slow": 0.6,
+			"normal": 0.35,
+			"fast": 0.18,
 		}
 		if mode == "realtime":
-			if step_count <= 0:
-				return 0
-			return max(10, int((elapsed_seconds * 1000) / step_count))
-		return speed_map.get(mode, 350)
+			symbols = sum(1 for ch in morse if ch in ".-")
+			if symbols <= 0:
+				return 0.08
+			return max(0.02, elapsed_seconds / symbols)
+		return speed_map.get(mode, 0.35)
+
+	def _get_volume(self) -> float:
+		if not self.sound_enabled_var.get():
+			return 0.0
+		return max(0.0, min(100.0, float(self.sound_volume_var.get()))) / 100.0
+
+	def _on_sound_toggle(self) -> None:
+		if not self.sound_enabled_var.get():
+			self._stop_audio()
+
+	def _stop_audio(self) -> None:
+		stop_playback()
+		if self._playback_after_id is not None:
+			self.after_cancel(self._playback_after_id)
+			self._playback_after_id = None
+		if self._active_play_button is not None:
+			self._active_play_button.configure(text="Play")
+			self._active_play_button = None
+		self._audio_playing = False
+
+	def _play_morse_sequence(
+		self,
+		morse: str,
+		unit_seconds: float,
+		button: Optional[ctk.CTkButton],
+		update_button: bool,
+	) -> None:
+		volume = self._get_volume()
+		if volume <= 0:
+			return
+		cleaned = sanitize_morse_symbols(morse)
+		if not cleaned:
+			return
+		wave, sample_rate = build_morse_wave(cleaned, unit_seconds, volume)
+		if wave.size == 0:
+			return
+		self._stop_audio()
+		play_wave(wave, sample_rate)
+		if update_button and button is not None:
+			button.configure(text="Pause")
+			self._audio_playing = True
+			self._active_play_button = button
+			duration_ms = int(len(wave) / sample_rate * 1000)
+			self._playback_after_id = self.after(duration_ms, self._stop_audio)
+
+	def _toggle_playback(self, morse: str, button: ctk.CTkButton) -> None:
+		if self._audio_playing:
+			self._stop_audio()
+			return
+		self._play_morse_sequence(morse, 0.12, button, update_button=True)
+
+	def _on_encoder_play(self) -> None:
+		if self.encoder_visualizer.winfo_ismapped():
+			return
+		morse = self._get_text(self.encoder_output)
+		self._toggle_playback(morse, self.encoder_play_btn)
+
+	def _on_decoder_play(self) -> None:
+		if self.decoder_visualizer.winfo_ismapped():
+			return
+		morse = self._get_text(self.decoder_input)
+		self._toggle_playback(morse, self.decoder_play_btn)
 
 	def _set_panel_visibility(
 		self,
@@ -259,6 +375,13 @@ class MorseApp(ctk.CTk):
 
 	def _sync_menu_var(self, var: tk.BooleanVar, panel: ctk.CTkFrame) -> None:
 		self.after_idle(lambda: var.set(panel.winfo_ismapped()))
+		self.after_idle(self._sync_play_buttons)
+
+	def _sync_play_buttons(self) -> None:
+		encoder_state = "disabled" if self.encoder_visualizer.winfo_ismapped() else "normal"
+		decoder_state = "disabled" if self.decoder_visualizer.winfo_ismapped() else "normal"
+		self.encoder_play_btn.configure(state=encoder_state)
+		self.decoder_play_btn.configure(state=decoder_state)
 
 	def _ensure_side_pane(self, pane: tk.PanedWindow, side_frame: ctk.CTkFrame, show: bool) -> None:
 		panes = pane.panes()
@@ -285,6 +408,8 @@ class MorseApp(ctk.CTk):
 			self.encoder_visual_var.get(),
 		)
 		self._sync_menu_var(self.encoder_visual_var, self.encoder_visualizer)
+		if self.encoder_visualizer.winfo_ismapped():
+			self._stop_audio()
 
 	def _toggle_encoder_guide(self) -> None:
 		self._set_panel_visibility(
@@ -305,6 +430,8 @@ class MorseApp(ctk.CTk):
 			self.decoder_visual_var.get(),
 		)
 		self._sync_menu_var(self.decoder_visual_var, self.decoder_visualizer)
+		if self.decoder_visualizer.winfo_ismapped():
+			self._stop_audio()
 
 	def _toggle_decoder_guide(self) -> None:
 		self._set_panel_visibility(
@@ -357,12 +484,14 @@ class MorseApp(ctk.CTk):
 			self._set_text(self.encoder_output, "Enter text to encode.")
 			return
 		start = time.perf_counter()
-		result, node_path = translate(text, "encode")
+		result, _ = translate(text, "encode")
 		elapsed = time.perf_counter() - start
 		self._set_text(self.encoder_output, result)
 		if self.encoder_visualizer.winfo_ismapped():
-			delay_ms = self._resolve_animation_delay(elapsed, len(node_path))
-			self.encoder_visualizer.highlight_path(node_path, delay_ms=delay_ms)
+			morse = sanitize_morse_symbols(result)
+			unit_seconds = self._resolve_unit_seconds(elapsed, morse)
+			self.encoder_visualizer.animate_morse(morse, unit_seconds)
+			self._play_morse_sequence(morse, unit_seconds, None, False)
 
 	def _on_decode(self) -> None:
 		text = self._get_text(self.decoder_input)
@@ -370,12 +499,14 @@ class MorseApp(ctk.CTk):
 			self._set_text(self.decoder_output, "Enter Morse to decode.")
 			return
 		start = time.perf_counter()
-		result, node_path = translate(text, "decode")
+		result, _ = translate(text, "decode")
 		elapsed = time.perf_counter() - start
 		self._set_text(self.decoder_output, result)
 		if self.decoder_visualizer.winfo_ismapped():
-			delay_ms = self._resolve_animation_delay(elapsed, len(node_path))
-			self.decoder_visualizer.highlight_path(node_path, delay_ms=delay_ms)
+			morse = sanitize_morse_symbols(text)
+			unit_seconds = self._resolve_unit_seconds(elapsed, morse)
+			self.decoder_visualizer.animate_morse(morse, unit_seconds)
+			self._play_morse_sequence(morse, unit_seconds, None, False)
 
 
 def run() -> None:

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import re
 import tkinter as tk
 from typing import Dict, List, Optional, Tuple
 
 import customtkinter as ctk
 
-from core.tree import MORSE_TREE, MorseNode
+from core.tree import MORSE_TREE, MorseNode, walk_path
 
 
 class MorseTreeVisualizer(ctk.CTkFrame):
@@ -161,3 +162,74 @@ class MorseTreeVisualizer(ctk.CTkFrame):
 			self._animation_id = self.after(delay_ms, lambda: step(index + 1))
 
 		step(0)
+
+	def animate_morse(self, morse: str, unit_seconds: float) -> None:
+		self.reset()
+		steps = self._build_steps(morse, unit_seconds)
+		if not steps:
+			return
+		self._run_steps(0, steps)
+
+	def _build_steps(self, morse: str, unit_seconds: float) -> List[Tuple[str, Tuple[int, int, bool], int]]:
+		unit_ms = max(10, int(unit_seconds * 1000))
+		dot_ms = unit_ms
+		dash_ms = unit_ms * 3
+		intra_gap = unit_ms
+		letter_gap = unit_ms * 3
+		word_gap = unit_ms * 7
+
+		steps: List[Tuple[str, Tuple[int, int, bool], int]] = []
+		for token in self._tokenize_morse(morse):
+			if token == "/":
+				steps.append(("pause", (0, 0, False), word_gap))
+				continue
+			_, nodes = walk_path(MORSE_TREE, token)
+			if len(nodes) < 2:
+				continue
+			steps.append(("reset", (0, 0, False), 1))
+			prev_id = id(nodes[0])
+			path_len = min(len(token), len(nodes) - 1)
+			for index in range(path_len):
+				symbol = token[index]
+				if symbol not in (".", "-"):
+					continue
+				current_id = id(nodes[index + 1])
+				is_final = index == path_len - 1
+				duration = dot_ms if symbol == "." else dash_ms
+				steps.append(("step", (prev_id, current_id, is_final), duration))
+				prev_id = current_id
+				if not is_final:
+					steps.append(("pause", (0, 0, False), intra_gap))
+			steps.append(("pause", (0, 0, False), letter_gap))
+		return steps
+
+	def _run_steps(self, index: int, steps: List[Tuple[str, Tuple[int, int, bool], int]]) -> None:
+		if index >= len(steps):
+			return
+		action, payload, delay_ms = steps[index]
+		if action == "reset":
+			self.reset()
+		elif action == "step":
+			self._apply_step(payload)
+		self._animation_id = self.after(max(1, delay_ms), lambda: self._run_steps(index + 1, steps))
+
+	def _apply_step(self, payload: Tuple[int, int, bool]) -> None:
+		prev_id, current_id, is_final = payload
+		prev_circle = self.node_items.get(prev_id)
+		current_circle = self.node_items.get(current_id)
+		if prev_circle is not None:
+			self.canvas.itemconfig(prev_circle, fill=self.visited_fill, outline=self.default_node_outline)
+		edge_id = self.edge_items.get((prev_id, current_id))
+		if edge_id is not None:
+			self.canvas.itemconfig(edge_id, fill=self.active_edge, width=2)
+		if current_circle is not None:
+			fill = self.final_fill if is_final else self.active_fill
+			self.canvas.itemconfig(current_circle, fill=fill, outline=self.default_node_outline)
+
+	def _tokenize_morse(self, morse: str) -> List[str]:
+		text = morse.strip()
+		if not text:
+			return []
+		text = re.sub(r"\s{3,}", " / ", text)
+		text = text.replace("/", " / ")
+		return [token for token in text.split() if token]
