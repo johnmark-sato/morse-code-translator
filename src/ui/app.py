@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 import tkinter as tk
 
 import customtkinter as ctk
@@ -155,8 +156,10 @@ class MorseApp(ctk.CTk):
 		self.menu_bar = tk.Menu(self)
 		file_menu = tk.Menu(self.menu_bar, tearoff=0)
 		self.view_menu = tk.Menu(self.menu_bar, tearoff=0)
+		self.animation_menu = tk.Menu(self.menu_bar, tearoff=0)
 		self.menu_bar.add_cascade(label="File", menu=file_menu)
 		self.menu_bar.add_cascade(label="View", menu=self.view_menu)
+		self.menu_bar.add_cascade(label="Animation", menu=self.animation_menu)
 		self.config(menu=self.menu_bar)
 
 		file_menu.add_command(label="Exit", command=self.destroy)
@@ -165,6 +168,7 @@ class MorseApp(ctk.CTk):
 		self.encoder_guide_var = tk.BooleanVar(value=False)
 		self.decoder_visual_var = tk.BooleanVar(value=False)
 		self.decoder_guide_var = tk.BooleanVar(value=False)
+		self.animation_speed_var = tk.StringVar(value="normal")
 
 		self.view_menu.add_checkbutton(
 			label="Encoder: Visualizer",
@@ -187,6 +191,41 @@ class MorseApp(ctk.CTk):
 			variable=self.decoder_guide_var,
 			command=self._toggle_decoder_guide,
 		)
+
+		self.animation_menu.add_radiobutton(
+			label="Slow",
+			value="slow",
+			variable=self.animation_speed_var,
+		)
+		self.animation_menu.add_radiobutton(
+			label="Normal",
+			value="normal",
+			variable=self.animation_speed_var,
+		)
+		self.animation_menu.add_radiobutton(
+			label="Fast",
+			value="fast",
+			variable=self.animation_speed_var,
+		)
+		self.animation_menu.add_separator()
+		self.animation_menu.add_radiobutton(
+			label="Real-time",
+			value="realtime",
+			variable=self.animation_speed_var,
+		)
+
+	def _resolve_animation_delay(self, elapsed_seconds: float, step_count: int) -> int:
+		mode = self.animation_speed_var.get()
+		speed_map = {
+			"slow": 600,
+			"normal": 350,
+			"fast": 150,
+		}
+		if mode == "realtime":
+			if step_count <= 0:
+				return 0
+			return max(10, int((elapsed_seconds * 1000) / step_count))
+		return speed_map.get(mode, 350)
 
 	def _set_panel_visibility(
 		self,
@@ -307,20 +346,26 @@ class MorseApp(ctk.CTk):
 		if not text:
 			self._set_text(self.encoder_output, "Enter text to encode.")
 			return
+		start = time.perf_counter()
 		result, node_path = translate(text, "encode")
+		elapsed = time.perf_counter() - start
 		self._set_text(self.encoder_output, result)
 		if self.encoder_visualizer.winfo_ismapped():
-			self.encoder_visualizer.highlight_path(node_path)
+			delay_ms = self._resolve_animation_delay(elapsed, len(node_path))
+			self.encoder_visualizer.highlight_path(node_path, delay_ms=delay_ms)
 
 	def _on_decode(self) -> None:
 		text = self._get_text(self.decoder_input)
 		if not text:
 			self._set_text(self.decoder_output, "Enter Morse to decode.")
 			return
+		start = time.perf_counter()
 		result, node_path = translate(text, "decode")
+		elapsed = time.perf_counter() - start
 		self._set_text(self.decoder_output, result)
 		if self.decoder_visualizer.winfo_ismapped():
-			self.decoder_visualizer.highlight_path(node_path)
+			delay_ms = self._resolve_animation_delay(elapsed, len(node_path))
+			self.decoder_visualizer.highlight_path(node_path, delay_ms=delay_ms)
 
 
 def run() -> None:
