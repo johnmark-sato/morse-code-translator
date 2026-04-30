@@ -18,6 +18,7 @@ class MorseApp(ctk.CTk):
 		self.title("Morse Code Translator")
 		self.geometry("1100x700")
 		self.minsize(900, 600)
+		self.after(50, lambda: self.state("zoomed"))
 
 		self.grid_columnconfigure(0, weight=1)
 		self.grid_rowconfigure(0, weight=1)
