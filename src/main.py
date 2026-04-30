@@ -1,5 +1,8 @@
+from ui.app import run
+
+
 def main() -> None:
-    print("Morse Code Translator project initialized.")
+    run()
 
 
 if __name__ == "__main__":
