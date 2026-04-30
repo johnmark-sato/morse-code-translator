@@ -12,7 +12,7 @@ class MorseTreeVisualizer(ctk.CTkFrame):
 	def __init__(self, master: tk.Misc, width: int = 420, height: int = 520) -> None:
 		super().__init__(master)
 		self.canvas = tk.Canvas(self, width=width, height=height, bg="#12161c", highlightthickness=0)
-		self.canvas.pack(fill="both", expand=True, padx=10, pady=10)
+		self.canvas.pack(fill="both", expand=True, padx=2, pady=2)
 
 		self.node_items: Dict[int, int] = {}
 		self.text_items: Dict[int, int] = {}

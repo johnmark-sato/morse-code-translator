@@ -37,21 +37,32 @@ class MorseApp(ctk.CTk):
 
 	def _build_encoder_tab(self) -> None:
 		self.encoder_tab.grid_columnconfigure(0, weight=1)
-		self.encoder_tab.grid_columnconfigure(1, weight=0)
 		self.encoder_tab.grid_rowconfigure(0, weight=1)
 
-		left_frame = ctk.CTkFrame(self.encoder_tab, fg_color="transparent")
-		left_frame.grid(row=0, column=0, sticky="nsew", padx=(10, 5), pady=10)
+		self.encoder_pane = tk.PanedWindow(
+			self.encoder_tab,
+			orient="horizontal",
+			sashrelief="raised",
+			bg="#12161c",
+		)
+		self.encoder_pane.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+
+		left_frame = ctk.CTkFrame(self.encoder_pane, fg_color="transparent")
 		left_frame.grid_columnconfigure(0, weight=1)
 		left_frame.grid_rowconfigure(1, weight=1)
 		left_frame.grid_rowconfigure(4, weight=1)
 
-		self.encoder_side = ctk.CTkFrame(self.encoder_tab)
-		self.encoder_side.grid(row=0, column=1, sticky="nsew", padx=(5, 10), pady=10)
+		self.encoder_side = ctk.CTkFrame(self.encoder_pane)
 		self.encoder_side.grid_columnconfigure(0, weight=1)
 		self.encoder_side.grid_rowconfigure(0, weight=1)
 		self.encoder_side_inner = ctk.CTkScrollableFrame(self.encoder_side)
 		self.encoder_side_inner.grid(row=0, column=0, sticky="nsew")
+		self.encoder_side_inner.grid_columnconfigure(0, weight=1)
+		self.encoder_side_inner.grid_rowconfigure(0, weight=1)
+		self.encoder_side_inner.grid_rowconfigure(1, weight=1)
+
+		self.encoder_pane.add(left_frame, minsize=420)
+		self.encoder_pane.add(self.encoder_side, minsize=280)
 
 		ctk.CTkLabel(left_frame, text="Text Input").grid(
 			row=0, column=0, sticky="w", padx=10, pady=(10, 4)
@@ -71,31 +82,43 @@ class MorseApp(ctk.CTk):
 		self._set_text(self.encoder_output, "")
 
 		self.encoder_visualizer = MorseTreeVisualizer(self.encoder_side_inner)
-		self.encoder_visualizer.grid(row=0, column=0, sticky="nsew", padx=10, pady=(10, 5))
+		self.encoder_visualizer.grid(row=0, column=0, sticky="nsew", padx=4, pady=(4, 2))
 		self.encoder_guide = self._build_morse_guide(self.encoder_side_inner)
-		self.encoder_guide.grid(row=1, column=0, sticky="nsew", padx=10, pady=(5, 10))
+		self.encoder_guide.grid(row=1, column=0, sticky="nsew", padx=4, pady=(2, 4))
 		self.encoder_visualizer.grid_remove()
 		self.encoder_guide.grid_remove()
-		self.encoder_side.grid_remove()
+		self.encoder_pane.forget(self.encoder_side)
 		self.encoder_panels = [self.encoder_visualizer, self.encoder_guide]
+		self.after(80, lambda: self._set_pane_ratio(self.encoder_pane, 0.6))
 
 	def _build_decoder_tab(self) -> None:
 		self.decoder_tab.grid_columnconfigure(0, weight=1)
-		self.decoder_tab.grid_columnconfigure(1, weight=0)
 		self.decoder_tab.grid_rowconfigure(0, weight=1)
 
-		left_frame = ctk.CTkFrame(self.decoder_tab, fg_color="transparent")
-		left_frame.grid(row=0, column=0, sticky="nsew", padx=(10, 5), pady=10)
+		self.decoder_pane = tk.PanedWindow(
+			self.decoder_tab,
+			orient="horizontal",
+			sashrelief="raised",
+			bg="#12161c",
+		)
+		self.decoder_pane.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+
+		left_frame = ctk.CTkFrame(self.decoder_pane, fg_color="transparent")
 		left_frame.grid_columnconfigure(0, weight=1)
 		left_frame.grid_rowconfigure(1, weight=1)
 		left_frame.grid_rowconfigure(4, weight=1)
 
-		self.decoder_side = ctk.CTkFrame(self.decoder_tab)
-		self.decoder_side.grid(row=0, column=1, sticky="nsew", padx=(5, 10), pady=10)
+		self.decoder_side = ctk.CTkFrame(self.decoder_pane)
 		self.decoder_side.grid_columnconfigure(0, weight=1)
 		self.decoder_side.grid_rowconfigure(0, weight=1)
 		self.decoder_side_inner = ctk.CTkScrollableFrame(self.decoder_side)
 		self.decoder_side_inner.grid(row=0, column=0, sticky="nsew")
+		self.decoder_side_inner.grid_columnconfigure(0, weight=1)
+		self.decoder_side_inner.grid_rowconfigure(0, weight=1)
+		self.decoder_side_inner.grid_rowconfigure(1, weight=1)
+
+		self.decoder_pane.add(left_frame, minsize=420)
+		self.decoder_pane.add(self.decoder_side, minsize=280)
 
 		ctk.CTkLabel(left_frame, text="Morse Input").grid(
 			row=0, column=0, sticky="w", padx=10, pady=(10, 4)
@@ -115,13 +138,14 @@ class MorseApp(ctk.CTk):
 		self._set_text(self.decoder_output, "")
 
 		self.decoder_visualizer = MorseTreeVisualizer(self.decoder_side_inner)
-		self.decoder_visualizer.grid(row=0, column=0, sticky="nsew", padx=10, pady=(10, 5))
+		self.decoder_visualizer.grid(row=0, column=0, sticky="nsew", padx=4, pady=(4, 2))
 		self.decoder_guide = self._build_morse_guide(self.decoder_side_inner)
-		self.decoder_guide.grid(row=1, column=0, sticky="nsew", padx=10, pady=(5, 10))
+		self.decoder_guide.grid(row=1, column=0, sticky="nsew", padx=4, pady=(2, 4))
 		self.decoder_visualizer.grid_remove()
 		self.decoder_guide.grid_remove()
-		self.decoder_side.grid_remove()
+		self.decoder_pane.forget(self.decoder_side)
 		self.decoder_panels = [self.decoder_visualizer, self.decoder_guide]
+		self.after(80, lambda: self._set_pane_ratio(self.decoder_pane, 0.6))
 
 	def _build_placeholder_tab(self, tab: ctk.CTkFrame, message: str) -> None:
 		tab.grid_columnconfigure(0, weight=1)
@@ -166,24 +190,46 @@ class MorseApp(ctk.CTk):
 
 	def _set_panel_visibility(
 		self,
+		pane: tk.PanedWindow,
 		side_frame: ctk.CTkFrame,
 		panel: ctk.CTkFrame,
 		panels: list[ctk.CTkFrame],
 		visible: bool,
 	) -> None:
 		if visible:
-			side_frame.grid()
 			panel.grid()
 		else:
 			panel.grid_remove()
-		self._sync_side_panel(side_frame, panels)
 
-	def _sync_side_panel(self, side_frame: ctk.CTkFrame, panels: list[ctk.CTkFrame]) -> None:
-		if not any(panel.winfo_ismapped() for panel in panels):
-			side_frame.grid_remove()
+		self._sync_side_panel(pane, side_frame, panels)
+
+	def _sync_side_panel(
+		self,
+		pane: tk.PanedWindow,
+		side_frame: ctk.CTkFrame,
+		panels: list[ctk.CTkFrame],
+	) -> None:
+		self._ensure_side_pane(pane, side_frame, any(panel.winfo_ismapped() for panel in panels))
+
+	def _ensure_side_pane(self, pane: tk.PanedWindow, side_frame: ctk.CTkFrame, show: bool) -> None:
+		panes = pane.panes()
+		side_name = str(side_frame)
+		if show and side_name not in panes:
+			pane.add(side_frame, minsize=280)
+			self.after(50, lambda: self._set_pane_ratio(pane, 0.6))
+		elif not show and side_name in panes:
+			pane.forget(side_frame)
+
+	def _set_pane_ratio(self, pane: tk.PanedWindow, ratio: float) -> None:
+		width = pane.winfo_width()
+		if width < 2:
+			self.after(60, lambda: self._set_pane_ratio(pane, ratio))
+			return
+		pane.sash_place(0, int(width * ratio), 0)
 
 	def _toggle_encoder_visual(self) -> None:
 		self._set_panel_visibility(
+			self.encoder_pane,
 			self.encoder_side,
 			self.encoder_visualizer,
 			self.encoder_panels,
@@ -193,6 +239,7 @@ class MorseApp(ctk.CTk):
 
 	def _toggle_encoder_guide(self) -> None:
 		self._set_panel_visibility(
+			self.encoder_pane,
 			self.encoder_side,
 			self.encoder_guide,
 			self.encoder_panels,
@@ -202,6 +249,7 @@ class MorseApp(ctk.CTk):
 
 	def _toggle_decoder_visual(self) -> None:
 		self._set_panel_visibility(
+			self.decoder_pane,
 			self.decoder_side,
 			self.decoder_visualizer,
 			self.decoder_panels,
@@ -211,6 +259,7 @@ class MorseApp(ctk.CTk):
 
 	def _toggle_decoder_guide(self) -> None:
 		self._set_panel_visibility(
+			self.decoder_pane,
 			self.decoder_side,
 			self.decoder_guide,
 			self.decoder_panels,
@@ -221,10 +270,11 @@ class MorseApp(ctk.CTk):
 	def _build_morse_guide(self, parent: ctk.CTkFrame) -> ctk.CTkFrame:
 		frame = ctk.CTkFrame(parent)
 		frame.grid_columnconfigure(0, weight=1)
+		frame.grid_rowconfigure(1, weight=1)
 		ctk.CTkLabel(frame, text="Morse Guide").grid(
 			row=0, column=0, sticky="w", padx=10, pady=(10, 4)
 		)
-		textbox = ctk.CTkTextbox(frame, height=220)
+		textbox = ctk.CTkTextbox(frame)
 		textbox.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
 		textbox.insert("1.0", self._format_morse_guide())
 		textbox.configure(state="disabled", font=("Consolas", 12))
