@@ -237,19 +237,28 @@ class MorseApp(ctk.CTk):
 		visible: bool,
 	) -> None:
 		if visible:
+			self._ensure_side_pane(pane, side_frame, True)
 			panel.grid()
 		else:
 			panel.grid_remove()
 
-		self._sync_side_panel(pane, side_frame, panels)
+		self._sync_side_panel(pane, side_frame, panels, force_visible=visible)
 
 	def _sync_side_panel(
 		self,
 		pane: tk.PanedWindow,
 		side_frame: ctk.CTkFrame,
 		panels: list[ctk.CTkFrame],
+		force_visible: bool | None = None,
 	) -> None:
-		self._ensure_side_pane(pane, side_frame, any(panel.winfo_ismapped() for panel in panels))
+		self.update_idletasks()
+		any_visible = any(panel.winfo_ismapped() for panel in panels)
+		if force_visible is True:
+			any_visible = True
+		self._ensure_side_pane(pane, side_frame, any_visible)
+
+	def _sync_menu_var(self, var: tk.BooleanVar, panel: ctk.CTkFrame) -> None:
+		self.after_idle(lambda: var.set(panel.winfo_ismapped()))
 
 	def _ensure_side_pane(self, pane: tk.PanedWindow, side_frame: ctk.CTkFrame, show: bool) -> None:
 		panes = pane.panes()
@@ -275,7 +284,7 @@ class MorseApp(ctk.CTk):
 			self.encoder_panels,
 			self.encoder_visual_var.get(),
 		)
-		self.encoder_visual_var.set(self.encoder_visualizer.winfo_ismapped())
+		self._sync_menu_var(self.encoder_visual_var, self.encoder_visualizer)
 
 	def _toggle_encoder_guide(self) -> None:
 		self._set_panel_visibility(
@@ -285,7 +294,7 @@ class MorseApp(ctk.CTk):
 			self.encoder_panels,
 			self.encoder_guide_var.get(),
 		)
-		self.encoder_guide_var.set(self.encoder_guide.winfo_ismapped())
+		self._sync_menu_var(self.encoder_guide_var, self.encoder_guide)
 
 	def _toggle_decoder_visual(self) -> None:
 		self._set_panel_visibility(
@@ -295,7 +304,7 @@ class MorseApp(ctk.CTk):
 			self.decoder_panels,
 			self.decoder_visual_var.get(),
 		)
-		self.decoder_visual_var.set(self.decoder_visualizer.winfo_ismapped())
+		self._sync_menu_var(self.decoder_visual_var, self.decoder_visualizer)
 
 	def _toggle_decoder_guide(self) -> None:
 		self._set_panel_visibility(
@@ -305,7 +314,7 @@ class MorseApp(ctk.CTk):
 			self.decoder_panels,
 			self.decoder_guide_var.get(),
 		)
-		self.decoder_guide_var.set(self.decoder_guide.winfo_ismapped())
+		self._sync_menu_var(self.decoder_guide_var, self.decoder_guide)
 
 	def _build_morse_guide(self, parent: ctk.CTkFrame) -> ctk.CTkFrame:
 		frame = ctk.CTkFrame(parent)
