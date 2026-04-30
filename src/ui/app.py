@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import tkinter as tk
+
 import customtkinter as ctk
 
 from core import translate
+from core.tree import MORSE_TABLE
+from ui.visualizer import MorseTreeVisualizer
 
 
 class MorseApp(ctk.CTk):
@@ -29,54 +33,215 @@ class MorseApp(ctk.CTk):
 		self._build_decoder_tab()
 		self._build_placeholder_tab(self.telegraph_tab, "Telegraph tools coming soon.")
 		self._build_placeholder_tab(self.audio_tab, "Audio tools coming soon.")
+		self._build_menus()
 
 	def _build_encoder_tab(self) -> None:
 		self.encoder_tab.grid_columnconfigure(0, weight=1)
-		self.encoder_tab.grid_rowconfigure(1, weight=1)
-		self.encoder_tab.grid_rowconfigure(4, weight=1)
+		self.encoder_tab.grid_columnconfigure(1, weight=0)
+		self.encoder_tab.grid_rowconfigure(0, weight=1)
 
-		ctk.CTkLabel(self.encoder_tab, text="Text Input").grid(
+		left_frame = ctk.CTkFrame(self.encoder_tab, fg_color="transparent")
+		left_frame.grid(row=0, column=0, sticky="nsew", padx=(10, 5), pady=10)
+		left_frame.grid_columnconfigure(0, weight=1)
+		left_frame.grid_rowconfigure(1, weight=1)
+		left_frame.grid_rowconfigure(4, weight=1)
+
+		self.encoder_side = ctk.CTkFrame(self.encoder_tab)
+		self.encoder_side.grid(row=0, column=1, sticky="nsew", padx=(5, 10), pady=10)
+		self.encoder_side.grid_columnconfigure(0, weight=1)
+		self.encoder_side.grid_rowconfigure(0, weight=1)
+		self.encoder_side_inner = ctk.CTkScrollableFrame(self.encoder_side)
+		self.encoder_side_inner.grid(row=0, column=0, sticky="nsew")
+
+		ctk.CTkLabel(left_frame, text="Text Input").grid(
 			row=0, column=0, sticky="w", padx=10, pady=(10, 4)
 		)
-		self.encoder_input = ctk.CTkTextbox(self.encoder_tab, height=120)
+		self.encoder_input = ctk.CTkTextbox(left_frame, height=120)
 		self.encoder_input.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
 
-		ctk.CTkButton(self.encoder_tab, text="Encode", command=self._on_encode).grid(
+		ctk.CTkButton(left_frame, text="Encode", command=self._on_encode).grid(
 			row=2, column=0, sticky="w", padx=10, pady=(0, 10)
 		)
 
-		ctk.CTkLabel(self.encoder_tab, text="Morse Output").grid(
+		ctk.CTkLabel(left_frame, text="Morse Output").grid(
 			row=3, column=0, sticky="w", padx=10, pady=(10, 4)
 		)
-		self.encoder_output = ctk.CTkTextbox(self.encoder_tab, height=120)
+		self.encoder_output = ctk.CTkTextbox(left_frame, height=120)
 		self.encoder_output.grid(row=4, column=0, sticky="nsew", padx=10, pady=(0, 10))
 		self._set_text(self.encoder_output, "")
 
+		self.encoder_visualizer = MorseTreeVisualizer(self.encoder_side_inner)
+		self.encoder_visualizer.grid(row=0, column=0, sticky="nsew", padx=10, pady=(10, 5))
+		self.encoder_guide = self._build_morse_guide(self.encoder_side_inner)
+		self.encoder_guide.grid(row=1, column=0, sticky="nsew", padx=10, pady=(5, 10))
+		self.encoder_visualizer.grid_remove()
+		self.encoder_guide.grid_remove()
+		self.encoder_side.grid_remove()
+		self.encoder_panels = [self.encoder_visualizer, self.encoder_guide]
+
 	def _build_decoder_tab(self) -> None:
 		self.decoder_tab.grid_columnconfigure(0, weight=1)
-		self.decoder_tab.grid_rowconfigure(1, weight=1)
-		self.decoder_tab.grid_rowconfigure(4, weight=1)
+		self.decoder_tab.grid_columnconfigure(1, weight=0)
+		self.decoder_tab.grid_rowconfigure(0, weight=1)
 
-		ctk.CTkLabel(self.decoder_tab, text="Morse Input").grid(
+		left_frame = ctk.CTkFrame(self.decoder_tab, fg_color="transparent")
+		left_frame.grid(row=0, column=0, sticky="nsew", padx=(10, 5), pady=10)
+		left_frame.grid_columnconfigure(0, weight=1)
+		left_frame.grid_rowconfigure(1, weight=1)
+		left_frame.grid_rowconfigure(4, weight=1)
+
+		self.decoder_side = ctk.CTkFrame(self.decoder_tab)
+		self.decoder_side.grid(row=0, column=1, sticky="nsew", padx=(5, 10), pady=10)
+		self.decoder_side.grid_columnconfigure(0, weight=1)
+		self.decoder_side.grid_rowconfigure(0, weight=1)
+		self.decoder_side_inner = ctk.CTkScrollableFrame(self.decoder_side)
+		self.decoder_side_inner.grid(row=0, column=0, sticky="nsew")
+
+		ctk.CTkLabel(left_frame, text="Morse Input").grid(
 			row=0, column=0, sticky="w", padx=10, pady=(10, 4)
 		)
-		self.decoder_input = ctk.CTkTextbox(self.decoder_tab, height=120)
+		self.decoder_input = ctk.CTkTextbox(left_frame, height=120)
 		self.decoder_input.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
 
-		ctk.CTkButton(self.decoder_tab, text="Decode", command=self._on_decode).grid(
+		ctk.CTkButton(left_frame, text="Decode", command=self._on_decode).grid(
 			row=2, column=0, sticky="w", padx=10, pady=(0, 10)
 		)
 
-		ctk.CTkLabel(self.decoder_tab, text="Text Output").grid(
+		ctk.CTkLabel(left_frame, text="Text Output").grid(
 			row=3, column=0, sticky="w", padx=10, pady=(10, 4)
 		)
-		self.decoder_output = ctk.CTkTextbox(self.decoder_tab, height=120)
+		self.decoder_output = ctk.CTkTextbox(left_frame, height=120)
 		self.decoder_output.grid(row=4, column=0, sticky="nsew", padx=10, pady=(0, 10))
 		self._set_text(self.decoder_output, "")
+
+		self.decoder_visualizer = MorseTreeVisualizer(self.decoder_side_inner)
+		self.decoder_visualizer.grid(row=0, column=0, sticky="nsew", padx=10, pady=(10, 5))
+		self.decoder_guide = self._build_morse_guide(self.decoder_side_inner)
+		self.decoder_guide.grid(row=1, column=0, sticky="nsew", padx=10, pady=(5, 10))
+		self.decoder_visualizer.grid_remove()
+		self.decoder_guide.grid_remove()
+		self.decoder_side.grid_remove()
+		self.decoder_panels = [self.decoder_visualizer, self.decoder_guide]
 
 	def _build_placeholder_tab(self, tab: ctk.CTkFrame, message: str) -> None:
 		tab.grid_columnconfigure(0, weight=1)
 		ctk.CTkLabel(tab, text=message).grid(row=0, column=0, padx=10, pady=10, sticky="w")
+
+	def _build_menus(self) -> None:
+		self.menu_bar = tk.Menu(self)
+		file_menu = tk.Menu(self.menu_bar, tearoff=0)
+		self.view_menu = tk.Menu(self.menu_bar, tearoff=0)
+		self.menu_bar.add_cascade(label="File", menu=file_menu)
+		self.menu_bar.add_cascade(label="View", menu=self.view_menu)
+		self.config(menu=self.menu_bar)
+
+		file_menu.add_command(label="Exit", command=self.destroy)
+
+		self.encoder_visual_var = tk.BooleanVar(value=False)
+		self.encoder_guide_var = tk.BooleanVar(value=False)
+		self.decoder_visual_var = tk.BooleanVar(value=False)
+		self.decoder_guide_var = tk.BooleanVar(value=False)
+
+		self.view_menu.add_checkbutton(
+			label="Encoder: Visualizer",
+			variable=self.encoder_visual_var,
+			command=self._toggle_encoder_visual,
+		)
+		self.view_menu.add_checkbutton(
+			label="Encoder: Guide",
+			variable=self.encoder_guide_var,
+			command=self._toggle_encoder_guide,
+		)
+		self.view_menu.add_separator()
+		self.view_menu.add_checkbutton(
+			label="Decoder: Visualizer",
+			variable=self.decoder_visual_var,
+			command=self._toggle_decoder_visual,
+		)
+		self.view_menu.add_checkbutton(
+			label="Decoder: Guide",
+			variable=self.decoder_guide_var,
+			command=self._toggle_decoder_guide,
+		)
+
+	def _set_panel_visibility(
+		self,
+		side_frame: ctk.CTkFrame,
+		panel: ctk.CTkFrame,
+		panels: list[ctk.CTkFrame],
+		visible: bool,
+	) -> None:
+		if visible:
+			side_frame.grid()
+			panel.grid()
+		else:
+			panel.grid_remove()
+		self._sync_side_panel(side_frame, panels)
+
+	def _sync_side_panel(self, side_frame: ctk.CTkFrame, panels: list[ctk.CTkFrame]) -> None:
+		if not any(panel.winfo_ismapped() for panel in panels):
+			side_frame.grid_remove()
+
+	def _toggle_encoder_visual(self) -> None:
+		self._set_panel_visibility(
+			self.encoder_side,
+			self.encoder_visualizer,
+			self.encoder_panels,
+			self.encoder_visual_var.get(),
+		)
+		self.encoder_visual_var.set(self.encoder_visualizer.winfo_ismapped())
+
+	def _toggle_encoder_guide(self) -> None:
+		self._set_panel_visibility(
+			self.encoder_side,
+			self.encoder_guide,
+			self.encoder_panels,
+			self.encoder_guide_var.get(),
+		)
+		self.encoder_guide_var.set(self.encoder_guide.winfo_ismapped())
+
+	def _toggle_decoder_visual(self) -> None:
+		self._set_panel_visibility(
+			self.decoder_side,
+			self.decoder_visualizer,
+			self.decoder_panels,
+			self.decoder_visual_var.get(),
+		)
+		self.decoder_visual_var.set(self.decoder_visualizer.winfo_ismapped())
+
+	def _toggle_decoder_guide(self) -> None:
+		self._set_panel_visibility(
+			self.decoder_side,
+			self.decoder_guide,
+			self.decoder_panels,
+			self.decoder_guide_var.get(),
+		)
+		self.decoder_guide_var.set(self.decoder_guide.winfo_ismapped())
+
+	def _build_morse_guide(self, parent: ctk.CTkFrame) -> ctk.CTkFrame:
+		frame = ctk.CTkFrame(parent)
+		frame.grid_columnconfigure(0, weight=1)
+		ctk.CTkLabel(frame, text="Morse Guide").grid(
+			row=0, column=0, sticky="w", padx=10, pady=(10, 4)
+		)
+		textbox = ctk.CTkTextbox(frame, height=220)
+		textbox.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0, 10))
+		textbox.insert("1.0", self._format_morse_guide())
+		textbox.configure(state="disabled", font=("Consolas", 12))
+		return frame
+
+	def _format_morse_guide(self) -> str:
+		entries = [f"{char} {code}" for char, code in MORSE_TABLE.items()]
+		lines = []
+		row = []
+		for entry in entries:
+			row.append(entry.ljust(10))
+			if len(row) == 4:
+				lines.append("  ".join(row).rstrip())
+				row = []
+		if row:
+			lines.append("  ".join(row).rstrip())
+		return "\n".join(lines)
 
 	def _get_text(self, textbox: ctk.CTkTextbox) -> str:
 		return textbox.get("1.0", "end").strip()
@@ -92,16 +257,20 @@ class MorseApp(ctk.CTk):
 		if not text:
 			self._set_text(self.encoder_output, "Enter text to encode.")
 			return
-		result, _ = translate(text, "encode")
+		result, node_path = translate(text, "encode")
 		self._set_text(self.encoder_output, result)
+		if self.encoder_visualizer.winfo_ismapped():
+			self.encoder_visualizer.highlight_path(node_path)
 
 	def _on_decode(self) -> None:
 		text = self._get_text(self.decoder_input)
 		if not text:
 			self._set_text(self.decoder_output, "Enter Morse to decode.")
 			return
-		result, _ = translate(text, "decode")
+		result, node_path = translate(text, "decode")
 		self._set_text(self.decoder_output, result)
+		if self.decoder_visualizer.winfo_ismapped():
+			self.decoder_visualizer.highlight_path(node_path)
 
 
 def run() -> None:
