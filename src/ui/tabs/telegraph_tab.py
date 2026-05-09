@@ -58,4 +58,30 @@ def build_telegraph_tab(parent: ctk.CTkFrame) -> None:
         decoded_text_box.insert("1.0",session.decoded_text)
         decoded_text_box.configure(state="disabled")
             
+    # Key Handlers
+    def on_dot(event=None):
+        session.add_dot()
+        update_display()
+        
+    def on_dash(event=None):
+        session.add_dash()
+        update_display()
     
+    def on_space(event=None):
+        session.add_space()
+        update_display()
+        return "break"
+    
+    # Clear Morse
+    def on_clear():
+        session.reset()
+        update_display()
+        
+    clear_button = ctk.CTkButton(main_frame, text="Clear", command=on_clear)
+    clear_button.grid(row=5,column=0,pady=(10,0))
+
+    #Key Binds
+    parent.bind_all("<Left>", on_dot)
+    parent.bind_all("<Right>", on_dash)
+    parent.bind_all("<space>", on_space)    
+# === TELEGRAPH UI END ===
