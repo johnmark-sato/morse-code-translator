@@ -43,4 +43,19 @@ def build_telegraph_tab(parent: ctk.CTkFrame) -> None:
     )
     help_label.grid(row=0,column=0,pady=(0,10))
     
+    # Update Display Function
+    def update_display() -> None:
+        
+        #Update Current Morse
+        current_morse_box.configure(state="normal")
+        current_morse_box.delete("1.0","end")
+        current_morse_box.insert("1.0",session.current_symbols)
+        current_morse_box.configure(state="disabled")
+
+        # Update Decoded Text    
+        decoded_text_box.configure(state="normal")
+        decoded_text_box.delete("1.0","end")
+        decoded_text_box.insert("1.0",session.decoded_text)
+        decoded_text_box.configure(state="disabled")
+            
     
