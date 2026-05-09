@@ -28,4 +28,11 @@ def build_telegraph_tab(parent: ctk.CTkFrame) -> None:
     current_morse_box.grid(row=0,column=0,sticky="nsew", pady=(0,15))
     current_morse_box.configure(state="disabled")
     
+    # Decoded Text Label
+    decoded_label = ctk.CTkLabel(main_frame, text="Decoded Text")
+    decoded_label.grid(row=0,column=0,sticky="w",pady=(0,5))
+    
+    decoded_text_box = ctk.CTkTextbox(main_frame)
+    decoded_text_box.grid(row=0,column=0,sticky="nsew",pady=(0,15))
+    decoded_text_box.configure(state="disabled")
     
