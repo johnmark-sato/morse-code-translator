@@ -36,3 +36,11 @@ def build_telegraph_tab(parent: ctk.CTkFrame) -> None:
     decoded_text_box.grid(row=0,column=0,sticky="nsew",pady=(0,15))
     decoded_text_box.configure(state="disabled")
     
+    #Help Text
+    help_label = ctk.CTkLabel(
+        main_frame,
+        text="Left Arrow = dot(.) | Right Arrow = dash(-) | Space = Commit"
+    )
+    help_label.grid(row=0,column=0,pady=(0,10))
+    
+    
