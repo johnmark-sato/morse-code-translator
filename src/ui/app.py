@@ -8,6 +8,7 @@ import customtkinter as ctk
 
 from audio.beeper import build_morse_wave, play_wave, sanitize_morse_symbols, stop_playback
 from core import translate
+from core.telegraph import TelegraphSession
 from core.tree import MORSE_TABLE
 from ui.visualizer import MorseTreeVisualizer
 
@@ -34,11 +35,19 @@ class MorseApp(ctk.CTk):
 		self.telegraph_tab = self.tabview.add("Telegraph")
 		self.audio_tab = self.tabview.add("Audio")
 
+		self.telegraph_session = TelegraphSession()
+
 		self._build_encoder_tab()
 		self._build_decoder_tab()
 		build_telegraph_tab(self.telegraph_tab)
+		self._build_telegraph_tab()
 		self._build_placeholder_tab(self.audio_tab, "Audio tools coming soon.")
 		self._build_menus()
+
+		self.bind("<Left>", self._on_telegraph_dot)
+		self.bind("<Right>", self._on_telegraph_dash)
+		self.bind("<space>", self._on_telegraph_space)
+		self.bind("<Return>", self._on_telegraph_commit)
 		self._audio_playing = False
 		self._active_play_button: Optional[ctk.CTkButton] = None
 		self._playback_after_id: Optional[str] = None
@@ -171,6 +180,95 @@ class MorseApp(ctk.CTk):
 		self.decoder_pane.forget(self.decoder_side)
 		self.decoder_panels = [self.decoder_visualizer, self.decoder_guide]
 		self.after(80, lambda: self._set_pane_ratio(self.decoder_pane, 0.6))
+
+	def _build_telegraph_tab(self) -> None:
+		self.telegraph_tab.grid_columnconfigure(0, weight=1)
+		self.telegraph_tab.grid_rowconfigure(0, weight=1)
+
+		self.telegraph_pane = tk.PanedWindow(
+			self.telegraph_tab,
+			orient="horizontal",
+			sashrelief="raised",
+			bg="#12161c",
+		)
+		self.telegraph_pane.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
+
+		left_frame = ctk.CTkFrame(self.telegraph_pane, fg_color="transparent")
+		left_frame.grid_columnconfigure(0, weight=1)
+		left_frame.grid_rowconfigure(2, weight=1)
+		left_frame.grid_rowconfigure(5, weight=1)
+
+		self.telegraph_side = ctk.CTkFrame(self.telegraph_pane)
+		self.telegraph_side.grid_columnconfigure(0, weight=1)
+		self.telegraph_side.grid_rowconfigure(0, weight=1)
+		self.telegraph_side_inner = ctk.CTkScrollableFrame(self.telegraph_side)
+		self.telegraph_side_inner.grid(row=0, column=0, sticky="nsew")
+		self.telegraph_side_inner.grid_columnconfigure(0, weight=1)
+
+		self.telegraph_pane.add(left_frame, minsize=420)
+		self.telegraph_pane.add(self.telegraph_side, minsize=280)
+
+		ctk.CTkLabel(left_frame, text="Current Morse Symbols").grid(
+			row=0, column=0, sticky="w", padx=10, pady=(10, 4)
+		)
+		ctk.CTkLabel(
+			left_frame,
+			text="Use Left/Right arrows for dot/dash, Space for word gap, Enter to commit.",
+			text_color="#cccccc",
+			wraplength=700,
+		).grid(row=1, column=0, sticky="w", padx=10, pady=(0, 10))
+		self.telegraph_symbols = ctk.CTkTextbox(left_frame, height=80)
+		self.telegraph_symbols.grid(row=2, column=0, sticky="nsew", padx=10, pady=(0, 10))
+		self._set_text(self.telegraph_symbols, "")
+
+		button_frame = ctk.CTkFrame(left_frame, fg_color="transparent")
+		button_frame.grid(row=3, column=0, sticky="ew", padx=10, pady=(0, 10))
+		button_frame.grid_columnconfigure(0, weight=1)
+		button_frame.grid_columnconfigure(1, weight=1)
+		button_frame.grid_columnconfigure(2, weight=1)
+		button_frame.grid_columnconfigure(3, weight=1)
+		button_frame.grid_columnconfigure(4, weight=1)
+		ctk.CTkButton(button_frame, text="Left Arrow", command=self._on_telegraph_dot).grid(row=0, column=0, sticky="ew", padx=4)
+		ctk.CTkButton(button_frame, text="Right Arrow", command=self._on_telegraph_dash).grid(row=0, column=1, sticky="ew", padx=4)
+		ctk.CTkButton(button_frame, text="Commit", command=self._on_telegraph_commit).grid(row=0, column=2, sticky="ew", padx=4)
+		ctk.CTkButton(button_frame, text="Space", command=self._on_telegraph_space).grid(row=0, column=3, sticky="ew", padx=4)
+		ctk.CTkButton(button_frame, text="Reset", command=self._on_telegraph_reset).grid(row=0, column=4, sticky="ew", padx=4)
+
+		ctk.CTkLabel(left_frame, text="Decoded Text").grid(
+			row=4, column=0, sticky="w", padx=10, pady=(10, 4)
+		)
+		self.telegraph_output = ctk.CTkTextbox(left_frame, height=120)
+		self.telegraph_output.grid(row=5, column=0, sticky="nsew", padx=10, pady=(0, 10))
+		self._set_text(self.telegraph_output, "")
+
+		self.telegraph_guide = self._build_morse_guide(self.telegraph_side_inner)
+		self.telegraph_guide.grid(row=0, column=0, sticky="nsew", padx=4, pady=4)
+
+		self._refresh_telegraph_state()
+
+	def _refresh_telegraph_state(self) -> None:
+		self._set_text(self.telegraph_symbols, self.telegraph_session.current_symbols)
+		self._set_text(self.telegraph_output, self.telegraph_session.decoded_text)
+
+	def _on_telegraph_dot(self, event=None) -> None:
+		self.telegraph_session.add_dot()
+		self._refresh_telegraph_state()
+
+	def _on_telegraph_dash(self, event=None) -> None:
+		self.telegraph_session.add_dash()
+		self._refresh_telegraph_state()
+
+	def _on_telegraph_commit(self, event=None) -> None:
+		self.telegraph_session.commit_character()
+		self._refresh_telegraph_state()
+
+	def _on_telegraph_space(self, event=None) -> None:
+		self.telegraph_session.add_space()
+		self._refresh_telegraph_state()
+
+	def _on_telegraph_reset(self) -> None:
+		self.telegraph_session.reset()
+		self._refresh_telegraph_state()
 
 	def _build_placeholder_tab(self, tab: ctk.CTkFrame, message: str) -> None:
 		tab.grid_columnconfigure(0, weight=1)
