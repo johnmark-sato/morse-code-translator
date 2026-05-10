@@ -12,7 +12,6 @@ from core.telegraph import TelegraphSession
 from core.tree import MORSE_TABLE
 from ui.visualizer import MorseTreeVisualizer
 
-from ui.tabs.telegraph_tab import build_telegraph_tab
 
 class MorseApp(ctk.CTk):
 	def __init__(self) -> None:
@@ -39,15 +38,14 @@ class MorseApp(ctk.CTk):
 
 		self._build_encoder_tab()
 		self._build_decoder_tab()
-		build_telegraph_tab(self.telegraph_tab)
 		self._build_telegraph_tab()
 		self._build_placeholder_tab(self.audio_tab, "Audio tools coming soon.")
 		self._build_menus()
 
-		self.bind("<Left>", self._on_telegraph_dot)
-		self.bind("<Right>", self._on_telegraph_dash)
-		self.bind("<space>", self._on_telegraph_space)
-		self.bind("<Return>", self._on_telegraph_commit)
+		self.bind_all("<Left>", self._on_telegraph_dot, add="+")
+		self.bind_all("<Right>", self._on_telegraph_dash, add="+")
+		self.bind_all("<space>", self._on_telegraph_space, add="+")
+		self.bind_all("<Return>", self._on_telegraph_commit, add="+")
 		self._audio_playing = False
 		self._active_play_button: Optional[ctk.CTkButton] = None
 		self._playback_after_id: Optional[str] = None
@@ -250,21 +248,36 @@ class MorseApp(ctk.CTk):
 		self._set_text(self.telegraph_symbols, self.telegraph_session.current_symbols)
 		self._set_text(self.telegraph_output, self.telegraph_session.decoded_text)
 
-	def _on_telegraph_dot(self, event=None) -> None:
+	def _telegraph_active(self) -> bool:
+		return self.tabview.get() == "Telegraph"
+
+	def _on_telegraph_dot(self, event=None) -> str | None:
+		if not self._telegraph_active():
+			return None
 		self.telegraph_session.add_dot()
 		self._refresh_telegraph_state()
+		return "break"
 
-	def _on_telegraph_dash(self, event=None) -> None:
+	def _on_telegraph_dash(self, event=None) -> str | None:
+		if not self._telegraph_active():
+			return None
 		self.telegraph_session.add_dash()
 		self._refresh_telegraph_state()
+		return "break"
 
-	def _on_telegraph_commit(self, event=None) -> None:
+	def _on_telegraph_commit(self, event=None) -> str | None:
+		if not self._telegraph_active():
+			return None
 		self.telegraph_session.commit_character()
 		self._refresh_telegraph_state()
+		return "break"
 
-	def _on_telegraph_space(self, event=None) -> None:
+	def _on_telegraph_space(self, event=None) -> str | None:
+		if not self._telegraph_active():
+			return None
 		self.telegraph_session.add_space()
 		self._refresh_telegraph_state()
+		return "break"
 
 	def _on_telegraph_reset(self) -> None:
 		self.telegraph_session.reset()
