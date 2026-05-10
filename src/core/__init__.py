@@ -2,6 +2,7 @@
 
 from core.encoder import encode
 from core.decoder import decode
+from core.telegraph import TelegraphSession
 
 
 def translate(value: str, mode: str):
@@ -21,4 +22,4 @@ def translate(value: str, mode: str):
     raise ValueError("mode must be 'encode' or 'decode'")
 
 
-__all__ = ["encode", "decode", "translate"]
+__all__ = ["encode", "decode", "translate", "TelegraphSession"]
