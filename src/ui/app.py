@@ -12,6 +12,7 @@ from core.telegraph import TelegraphSession
 from core.tree import MORSE_TABLE
 from ui.visualizer import MorseTreeVisualizer
 
+from ui.tabs.telegraph_tab import build_telegraph_tab
 
 class MorseApp(ctk.CTk):
 	def __init__(self) -> None:
@@ -38,6 +39,7 @@ class MorseApp(ctk.CTk):
 
 		self._build_encoder_tab()
 		self._build_decoder_tab()
+		build_telegraph_tab(self.telegraph_tab)
 		self._build_telegraph_tab()
 		self._build_placeholder_tab(self.audio_tab, "Audio tools coming soon.")
 		self._build_menus()

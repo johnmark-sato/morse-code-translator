@@ -1,0 +1,87 @@
+import customtkinter as ctk
+from core.telegraph import TelegraphSession
+
+# === TELEGRAPH UI START ===
+
+def build_telegraph_tab(parent: ctk.CTkFrame) -> None:
+
+    # Configure layout
+    parent.grid_columnconfigure(0, weight=1)
+    parent.grid_rowconfigure(0, weight=1)
+    
+    # Create session
+    session = TelegraphSession()
+    
+    # Main frame
+    main_frame = ctk.CTkFrame(parent)
+    main_frame.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+    
+    main_frame.grid_columnconfigure(0, weight=1)
+    main_frame.grid_rowconfigure(1, weight=1)
+    main_frame.grid_rowconfigure(3, weight=1)
+    
+    # Current Morse Label
+    current_label = ctk.CTkLabel(main_frame, text="Current Morse")
+    current_label.grid(row=0,column=0,sticky="w",pady=(0,5))
+    
+    current_morse_box = ctk.CTkTextbox(main_frame, height=60)
+    current_morse_box.grid(row=0,column=0,sticky="nsew", pady=(0,15))
+    current_morse_box.configure(state="disabled")
+    
+    # Decoded Text Label
+    decoded_label = ctk.CTkLabel(main_frame, text="Decoded Text")
+    decoded_label.grid(row=0,column=0,sticky="w",pady=(0,5))
+    
+    decoded_text_box = ctk.CTkTextbox(main_frame)
+    decoded_text_box.grid(row=0,column=0,sticky="nsew",pady=(0,15))
+    decoded_text_box.configure(state="disabled")
+    
+    #Help Text
+    help_label = ctk.CTkLabel(
+        main_frame,
+        text="Left Arrow = dot(.) | Right Arrow = dash(-) | Space = Commit"
+    )
+    help_label.grid(row=0,column=0,pady=(0,10))
+    
+    # Update Display Function
+    def update_display() -> None:
+        
+        #Update Current Morse
+        current_morse_box.configure(state="normal")
+        current_morse_box.delete("1.0","end")
+        current_morse_box.insert("1.0",session.current_symbols)
+        current_morse_box.configure(state="disabled")
+
+        # Update Decoded Text    
+        decoded_text_box.configure(state="normal")
+        decoded_text_box.delete("1.0","end")
+        decoded_text_box.insert("1.0",session.decoded_text)
+        decoded_text_box.configure(state="disabled")
+            
+    # Key Handlers
+    def on_dot(event=None):
+        session.add_dot()
+        update_display()
+        
+    def on_dash(event=None):
+        session.add_dash()
+        update_display()
+    
+    def on_space(event=None):
+        session.add_space()
+        update_display()
+        return "break"
+    
+    # Clear Morse
+    def on_clear():
+        session.reset()
+        update_display()
+        
+    clear_button = ctk.CTkButton(main_frame, text="Clear", command=on_clear)
+    clear_button.grid(row=5,column=0,pady=(10,0))
+
+    #Key Binds
+    parent.bind_all("<Left>", on_dot)
+    parent.bind_all("<Right>", on_dash)
+    parent.bind_all("<space>", on_space)    
+# === TELEGRAPH UI END ===
